@@ -177,7 +177,7 @@ export class BotUpdate {
         `🎬 <b>${movie.name}</b>\n` +
         `🔢 Kod: <code>${movie.code}</code>\n` +
         (movie.description ? `📝 ${movie.description}\n` : '') +
-        `👁️ Ko'rishlar: ${movie.view_count}`;
+        `📥 Yuklanganlar: ${movie.view_count}`;
 
       await ctx.replyWithVideo(movie.file_id, {
         caption,
@@ -407,7 +407,7 @@ export class BotUpdate {
 
     let text = `🎬 <b>Kinolar ro'yxati</b> (jami: ${total})\n\n`;
     movies.forEach((m, i) => {
-      text += `${i + 1}. <code>${m.code}</code> — ${m.name} (👁️${m.view_count})\n`;
+      text += `${i + 1}. <code>${m.code}</code> — ${m.name} (📥 Yuklanishlar soni: ${m.view_count})\n`;
     });
 
     await ctx.editMessageText(text, {
