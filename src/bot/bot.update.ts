@@ -81,7 +81,7 @@ export class BotUpdate {
       const isAdmin = await this.adminsService.isAdmin(user.id);
       if (isAdmin) {
         await ctx.reply(
-          `👋 Xush kelibsiz, Admin ${user.first_name}!\n\nAdmin panelni ochish uchun /admin buyrug'ini yuboring.`,
+          `👋 Xush kelibsiz, Admin ${user.first_name}!\n\nAdmin panelni ochish uchun /admin_update buyrug'ini yuboring.`,
         );
         return;
       }
@@ -100,7 +100,7 @@ export class BotUpdate {
 
       ctx.session = {};
       await ctx.reply(
-        `🎬 Salom, ${user.first_name}!\n\n🔍 Kino kodini yuboring va men sizga filmni topib beraman.`,
+        `🎬 Assalomu alaykum, ${user.first_name}!\n\n🔍 Kino kodini yuboring va men sizga kinoni topib beraman.`,
       );
     } catch (err) {
       this.logger.error('Start xatosi:', err);
@@ -119,7 +119,7 @@ export class BotUpdate {
       if (!text) return;
 
       // Admin buyruqlari tekshiruvi
-      if (text === '/admin') {
+      if (text === '/admin_update') {
         return this.openAdminPanel(ctx);
       }
 
@@ -568,7 +568,7 @@ export class BotUpdate {
     if (topMovies.length > 0) {
       text += `🏆 <b>Top kinolar:</b>\n`;
       topMovies.forEach((m, i) => {
-        text += `${i + 1}. ${m.name} (👁️${m.view_count})\n`;
+        text += `${i + 1}. ${m.name} (Yuklanganlar: ${m.view_count})\n`;
       });
     }
 
@@ -613,7 +613,7 @@ export class BotUpdate {
     let text = `👑 <b>Adminlar ro'yxati</b>\n\n`;
 
     // Super adminlar
-    text += `🔴 <b>Super adminlar (.env):</b>\n`;
+    text += `🔴 <b>Super adminlar:</b>\n`;
     superIds.forEach((id) => {
       text += `• <code>${id}</code>\n`;
     });

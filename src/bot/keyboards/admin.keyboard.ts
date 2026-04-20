@@ -112,11 +112,11 @@ export const subscribeCheckKeyboard = (
     const url = ch.username
       ? `https://t.me/${ch.username.replace('@', '')}`
       : ch.invite_link || 'https://t.me';
-    return [Markup.button.url(`📢 ${ch.title}`, url)];
+    return [{ text: `📢 ${ch.title}`, url, style: 'danger' } as any];
   });
 
   return Markup.inlineKeyboard([
     ...urlButtons,
-    [Markup.button.callback('✅ Obunani tekshirish', 'check:subscription')],
+    [{ text: '✅ Obunani tekshirish', callback_data: 'check:subscription', style: 'primary' } as any],
   ] as any);
 };

@@ -33,7 +33,7 @@ import { BotModule } from './bot/bot.module';
         password: config.get('DB_PASSWORD', 'postgres'),
         database: config.get('DB_NAME', 'kinodb'),
         entities: [UserEntity, MovieEntity, AdminEntity, ChannelEntity],
-        synchronize: true, // Production da false qiling va migration ishlating
+        synchronize: false, // Production da false qiling va migration ishlating
         logging: config.get('NODE_ENV') === 'development',
       }),
     }),
