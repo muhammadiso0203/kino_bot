@@ -34,7 +34,7 @@ import { BotModule } from './bot/bot.module';
         database: config.get('DB_NAME', 'kinodb'),
         entities: [UserEntity, MovieEntity, AdminEntity, ChannelEntity],
         synchronize: false, // Production da false qiling va migration ishlating
-        logging: config.get('NODE_ENV') === 'development',
+        logging: false,
       }),
     }),
 

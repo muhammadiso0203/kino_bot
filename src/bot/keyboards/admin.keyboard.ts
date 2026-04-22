@@ -120,3 +120,4 @@ export const subscribeCheckKeyboard = (
     [{ text: '✅ Obunani tekshirish', callback_data: 'check:subscription', style: 'primary' } as any],
   ] as any);
 };
+

@@ -39,6 +39,9 @@ export class UsersService {
       user.username = telegramUser.username;
       user.first_name = telegramUser.first_name;
       user.last_name = telegramUser.last_name;
+      if (user.is_blocked) {
+        user.is_blocked = false;
+      }
       await this.userRepo.save(user);
     }
 
@@ -60,6 +63,10 @@ export class UsersService {
       .createQueryBuilder('user')
       .where('user.last_active_at > :date', { date: sevenDaysAgo })
       .getCount();
+  }
+
+  async getBlockedCount(): Promise<number> {
+    return this.userRepo.count({ where: { is_blocked: true } });
   }
 
   async getAllIds(): Promise<number[]> {

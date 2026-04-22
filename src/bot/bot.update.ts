@@ -26,6 +26,7 @@ import {
   subscribeCheckKeyboard,
 } from './keyboards/admin.keyboard';
 
+
 // Sessiya uchun tip
 interface SessionData {
   step?: string;
@@ -158,6 +159,27 @@ export class BotUpdate {
     }
   }
 
+  @On('my_chat_member')
+  async onMyChatMember(@Ctx() ctx: BotContext) {
+    try {
+      const update = (ctx.update as any).my_chat_member;
+      if (update.new_chat_member.status === 'kicked') {
+        // Foydalanuvchi botni blokladi (yoki o'chirildi)
+        await this.usersService.blockUser(update.from.id);
+      } else if (update.new_chat_member.status === 'member') {
+        // Foydalanuvchi botni blokdan chiqardi
+        await this.usersService.findOrCreate({
+          id: update.from.id,
+          username: update.from.username,
+          first_name: update.from.first_name,
+          last_name: update.from.last_name,
+        });
+      }
+    } catch (err) {
+      this.logger.error('my_chat_member handler xatosi:', err);
+    }
+  }
+
   /**
    * Kino qidirish
    */
@@ -238,13 +260,14 @@ export class BotUpdate {
         );
         break;
 
-      case 'movie:add:description':
-        if (text === '/skip') {
-          await this.saveMovie(ctx, null);
-        } else {
-          await this.saveMovie(ctx, text);
-        }
-        break;
+      // case 'movie:add:description':
+      //   if (text === '/skip') {
+      //     await this.saveMovie(ctx, null);
+      //   } else {
+      //     await this.saveMovie(ctx, text);
+      //   }
+      //   break;
+
 
       // === KINO O'CHIRISH ===
       case 'movie:delete:code':
@@ -322,11 +345,12 @@ export class BotUpdate {
       // file_id ni saqlash uchun vaqtincha sessionga
       ctx.session.movieData = ctx.session.movieData || {};
       (ctx.session.movieData as any).file_id = fileId;
-      ctx.session.step = 'movie:add:description';
-      await ctx.reply(
-        '📝 Tavsif kiriting (ixtiyoriy, o\'tkazib yuborish uchun /skip):',
-        cancelKeyboard(),
-      );
+
+      // Avtomatik tavsif yaratish
+      const botUsername = ctx.botInfo?.username || 'bot';
+      const { name, code } = ctx.session.movieData;
+      const autoDescription = `<b>@${botUsername} – siz izlagan kinolar barchasi bizda</b>`;
+      await this.saveMovie(ctx, autoDescription);
     }
   }
 
@@ -407,7 +431,7 @@ export class BotUpdate {
 
     let text = `🎬 <b>Kinolar ro'yxati</b> (jami: ${total})\n\n`;
     movies.forEach((m, i) => {
-      text += `${i + 1}. <code>${m.code}</code> — ${m.name} (📥 Yuklanishlar soni: ${m.view_count})\n`;
+      text += `${i + 1}. <code>${m.code}</code> — : ${m.name} (📥 Yuklanishlar soni: ${m.view_count})\n`;
     });
 
     await ctx.editMessageText(text, {
@@ -551,18 +575,20 @@ export class BotUpdate {
   async onStats(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
 
-    const [totalUsers, totalMovies, activeUsers, topMovies] =
+    const [totalUsers, totalMovies, activeUsers, blockedUsers, topMovies] =
       await Promise.all([
         this.usersService.getTotalCount(),
         this.moviesService.getTotalCount(),
         this.usersService.getActiveCount(),
+        this.usersService.getBlockedCount(),
         this.moviesService.getTopMovies(5),
       ]);
 
     let text =
       `📊 <b>Statistika</b>\n\n` +
       `👥 Jami foydalanuvchilar: <b>${totalUsers}</b>\n` +
-      `🔥 Faol (7 kun): <b>${activeUsers}</b>\n` +
+      `🔥 7 kun ichida faol foydalanuvchilar: <b>${activeUsers}</b>\n` +
+      `🚫 Botni bloklaganlar: <b>${blockedUsers}</b>\n` +
       `🎬 Jami kinolar: <b>${totalMovies}</b>\n\n`;
 
     if (topMovies.length > 0) {
