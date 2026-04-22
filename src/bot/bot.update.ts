@@ -341,10 +341,12 @@ export class BotUpdate {
       if (!video) return;
 
       const fileId = video.file_id;
+      const thumbnailId = video.thumbnail?.file_id;
 
       // file_id ni saqlash uchun vaqtincha sessionga
       ctx.session.movieData = ctx.session.movieData || {};
       (ctx.session.movieData as any).file_id = fileId;
+      (ctx.session.movieData as any).thumbnail_id = thumbnailId;
 
       // Avtomatik tavsif yaratish
       const botUsername = ctx.botInfo?.username || 'bot';
@@ -736,6 +738,41 @@ export class BotUpdate {
         file_id: fileId,
         description: description || undefined,
       });
+
+      const channelId = process.env.MOVIES_CHANNEL_ID;
+      if (channelId) {
+        try {
+          const caption =
+            `🎬 <b>${movie.name}</b>\n\n` +
+            `🔢 Kod: <code>${movie.code}</code>\n\n` +
+            (movie.description ? `${movie.description}\n\n` : '') +
+            `🤖 Barcha kinolar bizning botda: @${ctx.botInfo?.username}`;
+
+          const thumbnailId = (ctx.session.movieData as any).thumbnail_id;
+
+          if (thumbnailId) {
+            try {
+              // Thumbnail file_id ni to'g'ridan-to'g'ri sendPhoto ga berib bo'lmaydi, URL ni olamiz
+              const fileUrl = await this.bot.telegram.getFileLink(thumbnailId);
+              await this.bot.telegram.sendPhoto(channelId, { url: fileUrl.toString() }, {
+                caption,
+                parse_mode: 'HTML',
+              });
+            } catch (err) {
+              // URL olish yoki rasm yuborishda xato bo'lsa, oddiy xabar yuboramiz
+              await this.bot.telegram.sendMessage(channelId, caption, {
+                parse_mode: 'HTML',
+              });
+            }
+          } else {
+            await this.bot.telegram.sendMessage(channelId, caption, {
+              parse_mode: 'HTML',
+            });
+          }
+        } catch (e) {
+          this.logger.error('Kanalga xabar yuborishda xatolik:', e);
+        }
+      }
 
       ctx.session = {};
       await ctx.reply(
