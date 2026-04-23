@@ -745,8 +745,7 @@ export class BotUpdate {
           const caption =
             `🎬 <b>${movie.name}</b>\n\n` +
             `🔢 Kod: <code>${movie.code}</code>\n\n` +
-            (movie.description ? `${movie.description}\n\n` : '') +
-            `🤖 Barcha kinolar bizning botda: @${ctx.botInfo?.username}`;
+            (movie.description ? `${movie.description}` : '');
 
           const thumbnailId = (ctx.session.movieData as any).thumbnail_id;
 
