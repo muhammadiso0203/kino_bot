@@ -61,7 +61,17 @@ export class BotService {
         this.logger.warn(
           `Kanal tekshirishda xato: ${channel.channel_id} - ${(err as Error).message}`,
         );
-        // Agar kanal o'chirilgan bo'lsa, uni tekshirishdan o'tkazib yuboramiz
+        // Agar xatolik bo'lsa (masalan, foydalanuvchi topilmadi yoki bot admin emas),
+        // foydalanuvchini a'zo emas deb hisoblaymiz.
+        if (channel.type === ChannelType.REQUEST) {
+          const hasRequested = await this.joinRequestRepository.findOne({
+            where: { user_id: userId, channel_id: channel.channel_id },
+          });
+          if (hasRequested) {
+            continue; // Zayavka yuborgan bo'lsa ruxsat beramiz
+          }
+        }
+        notSubscribed.push(channel);
       }
     }
 

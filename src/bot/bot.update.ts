@@ -41,6 +41,8 @@ interface SessionData {
   channelData?: {
     type?: ChannelType;
     channel_id?: string;
+    title?: string;
+    username?: string;
   };
   newAdminId?: number;
   deleteMovieCode?: string;
@@ -320,6 +322,14 @@ export class BotUpdate {
       // === KANAL QO'SHISH ===
       case 'channel:add:id':
         await this.handleChannelIdInput(ctx, text);
+        break;
+
+      case 'channel:add:link':
+        if (!text.trim().startsWith('http')) {
+          await ctx.reply('❌ Noto\'g\'ri ssilka formati. Iltimos, kanal ssilkasini yuboring (http...):', cancelKeyboard());
+          return;
+        }
+        await this.finalizeChannelAdd(ctx, text.trim());
         break;
 
       // === ADMIN QO'SHISH ===
@@ -852,21 +862,26 @@ export class BotUpdate {
       let inviteLink: string | undefined;
 
       // Maxfiy kanal uchun invite link olish
-      if (
-        channelType === ChannelType.PRIVATE ||
-        channelType === ChannelType.REQUEST
-      ) {
+      if (channelType === ChannelType.REQUEST) {
+        if (!ctx.session.channelData) ctx.session.channelData = {};
+        ctx.session.channelData.channel_id = chatInfo.id.toString();
+        ctx.session.channelData.title = (chatInfo as any).title || input;
+        ctx.session.channelData.username = (chatInfo as any).username;
+        ctx.session.channelData.type = channelType;
+        ctx.session.step = 'channel:add:link';
+        
+        await ctx.reply(
+          `✅ Kanal topildi: 📢 ${(chatInfo as any).title}\n\n🔗 Endi bot orqali kirish uchun shu kanalning zayavka (join request) ssilkasini yuboring:\n(Eslatma: ssilkani o'zingiz yaratib shu yerga tashlang)`,
+          cancelKeyboard(),
+        );
+        return; // Dasturni shu yerda to'xtatamiz, link kiritilishini kutamiz
+      }
+
+      if (channelType === ChannelType.PRIVATE) {
         try {
-          if (channelType === ChannelType.REQUEST) {
-            const invite = await this.bot.telegram.createChatInviteLink(chatInfo.id, {
-              creates_join_request: true,
-            });
-            inviteLink = invite.invite_link;
-          } else {
-            inviteLink = await this.bot.telegram.exportChatInviteLink(
-              chatInfo.id,
-            );
-          }
+          inviteLink = await this.bot.telegram.exportChatInviteLink(
+            chatInfo.id,
+          );
         } catch (err) {
           this.logger.error('Invite link olishda xato:', err);
           inviteLink = undefined;
@@ -889,6 +904,36 @@ export class BotUpdate {
     } catch (err: any) {
       await ctx.reply(
         `❌ Kanal topilmadi yoki bot kanal adminsi emas!\n\nXato: ${(err as Error).message}\n\nQaytadan kiriting:`,
+        cancelKeyboard(),
+      );
+    }
+  }
+
+  private async finalizeChannelAdd(ctx: BotContext, link: string) {
+    try {
+      const data = ctx.session.channelData;
+      if (!data || !data.channel_id) {
+        ctx.session = {};
+        await ctx.reply("❌ Ma'lumot topilmadi, iltimos boshqatdan qo'shing.", { parse_mode: 'HTML', ...adminMainKeyboard() });
+        return;
+      }
+      
+      await this.channelsService.addChannel({
+        channel_id: data.channel_id,
+        title: data.title || 'Kanal',
+        username: data.username,
+        type: data.type || ChannelType.REQUEST,
+        invite_link: link,
+      });
+
+      ctx.session = {};
+      await ctx.reply(
+        `✅ Zayavka kanali muvaffaqiyatli qo'shildi!\n\n📢 ${data.title}\n🔗 Ssilka: ${link}`,
+        { ...channelsMenuKeyboard() },
+      );
+    } catch (err: any) {
+      await ctx.reply(
+        `❌ Kanal qo'shishda xato: ${(err as Error).message}`,
         cancelKeyboard(),
       );
     }

@@ -109,9 +109,11 @@ export const subscribeCheckKeyboard = (
   channels: { title: string; username?: string; invite_link?: string }[],
 ) => {
   const urlButtons = channels.map((ch) => {
-    const url = ch.username
+    const url = ch.invite_link
+      ? ch.invite_link
+      : ch.username
       ? `https://t.me/${ch.username.replace('@', '')}`
-      : ch.invite_link || 'https://t.me';
+      : 'https://t.me';
     return [{ text: `📢 ${ch.title}`, url, style: 'danger' } as any];
   });
 
