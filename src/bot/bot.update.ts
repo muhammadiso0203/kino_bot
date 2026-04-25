@@ -43,6 +43,7 @@ interface SessionData {
     channel_id?: string;
     title?: string;
     username?: string;
+    invite_link?: string;
   };
   newAdminId?: number;
   deleteMovieCode?: string;
@@ -324,6 +325,19 @@ export class BotUpdate {
         await this.handleChannelIdInput(ctx, text);
         break;
 
+      case 'channel:add:title':
+        ctx.session.channelData.title = text.trim();
+        if (ctx.session.channelData.type === ChannelType.REQUEST) {
+          ctx.session.step = 'channel:add:link';
+          await ctx.reply(
+            `✅ Nom saqlandi: <b>${text.trim()}</b>\n\n🔗 Endi bot orqali kirish uchun shu kanalning zayavka (join request) ssilkasini yuboring:\n(Eslatma: ssilkani o'zingiz yaratib shu yerga tashlang)`,
+            { parse_mode: 'HTML', ...cancelKeyboard() },
+          );
+        } else {
+          await this.finalizeChannelAdd(ctx, ctx.session.channelData.invite_link);
+        }
+        break;
+
       case 'channel:add:link':
         if (!text.trim().startsWith('http')) {
           await ctx.reply('❌ Noto\'g\'ri ssilka formati. Iltimos, kanal ssilkasini yuboring (http...):', cancelKeyboard());
@@ -417,12 +431,12 @@ export class BotUpdate {
       await this.botService.checkSubscriptions(ctx.from.id);
 
     if (!isSubscribed) {
-      await ctx.editMessageText(
+      await this.safeEditMessageText(ctx, 
         '⚠️ Siz hali quyidagi kanallarga obuna bo\'lmadingiz:',
         subscribeCheckKeyboard(notSubscribed),
       );
     } else {
-      await ctx.editMessageText(
+      await this.safeEditMessageText(ctx, 
         '✅ Rahmat! Endi kino kodini yuboring va kinoni topib beraman.',
       );
     }
@@ -433,7 +447,7 @@ export class BotUpdate {
   async onAdminBack(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = {};
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🎛️ <b>Admin Panel</b>\n\nQuyidagi bo\'limlardan birini tanlang:',
       { parse_mode: 'HTML', ...adminMainKeyboard() },
     );
@@ -444,7 +458,7 @@ export class BotUpdate {
   async onMoviesMenu(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = {};
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🎬 <b>Kinolar boshqaruvi</b>\n\nNimani qilmoqchisiz?',
       { parse_mode: 'HTML', ...moviesMenuKeyboard() },
     );
@@ -454,7 +468,7 @@ export class BotUpdate {
   async onMovieAdd(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = { step: 'movie:add:code' };
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🔢 Kino kodini kiriting (masalan: 1234):',
       cancelKeyboard(),
     );
@@ -464,7 +478,7 @@ export class BotUpdate {
   async onMovieDelete(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = { step: 'movie:delete:code' };
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🗑️ O\'chirmoqchi bo\'lgan kinoning kodini kiriting:',
       cancelKeyboard(),
     );
@@ -476,7 +490,7 @@ export class BotUpdate {
     const [movies, total] = await this.moviesService.getAll(1, 20);
 
     if (movies.length === 0) {
-      await ctx.editMessageText('📭 Kinolar bazasi bo\'sh.', moviesMenuKeyboard());
+      await this.safeEditMessageText(ctx, '📭 Kinolar bazasi bo\'sh.', moviesMenuKeyboard());
       return;
     }
 
@@ -485,7 +499,7 @@ export class BotUpdate {
       text += `${i + 1}. <code>${m.code}</code> — : ${m.name} (📥 Yuklanishlar soni: ${m.view_count})\n`;
     });
 
-    await ctx.editMessageText(text, {
+    await this.safeEditMessageText(ctx, text, {
       parse_mode: 'HTML',
       ...moviesMenuKeyboard(),
     });
@@ -496,7 +510,7 @@ export class BotUpdate {
   async onChannelsMenu(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = {};
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '📢 <b>Kanallar boshqaruvi</b>\n\nNimani qilmoqchisiz?',
       { parse_mode: 'HTML', ...channelsMenuKeyboard() },
     );
@@ -506,7 +520,7 @@ export class BotUpdate {
   async onChannelAdd(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = { step: 'channel:add:type' };
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '📢 Kanal turini tanlang:',
       channelTypeKeyboard(),
     );
@@ -518,7 +532,7 @@ export class BotUpdate {
     const type = ((ctx as any).match as RegExpExecArray)[1] as ChannelType;
     ctx.session.channelData = { type };
     ctx.session.step = 'channel:add:id';
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🔗 Kanal ID yoki username kiriting:\n\n' +
         '• Ommaviy kanal: @username yoki -100xxxx\n' +
         '• Maxfiy/So\'rovli kanal: -100xxxx (ID)',
@@ -532,7 +546,7 @@ export class BotUpdate {
     const channels = await this.channelsService.getAll();
 
     if (channels.length === 0) {
-      await ctx.editMessageText('📭 Kanallar yo\'q.', channelsMenuKeyboard());
+      await this.safeEditMessageText(ctx, '📭 Kanallar yo\'q.', channelsMenuKeyboard());
       return;
     }
 
@@ -549,7 +563,7 @@ export class BotUpdate {
       text += `\n   ID: ${ch.channel_id}\n\n`;
     });
 
-    await ctx.editMessageText(text, {
+    await this.safeEditMessageText(ctx, text, {
       parse_mode: 'HTML',
       ...channelsMenuKeyboard(),
     });
@@ -561,11 +575,11 @@ export class BotUpdate {
     const channels = await this.channelsService.getAll();
 
     if (channels.length === 0) {
-      await ctx.editMessageText('📭 O\'chirish uchun kanal yo\'q.', channelsMenuKeyboard());
+      await this.safeEditMessageText(ctx, '📭 O\'chirish uchun kanal yo\'q.', channelsMenuKeyboard());
       return;
     }
 
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       "🗑️ O'chirmoqchi bo'lgan kanalni tanlang:",
       deleteChannelKeyboard(channels),
     );
@@ -579,12 +593,12 @@ export class BotUpdate {
     try {
       const channel = await this.channelsService.getById(id);
       await this.channelsService.removeChannel(id);
-      await ctx.editMessageText(
+      await this.safeEditMessageText(ctx, 
         `✅ <b>${channel?.title}</b> kanali o'chirildi!`,
         { parse_mode: 'HTML', ...channelsMenuKeyboard() },
       );
     } catch (err: any) {
-      await ctx.editMessageText(`❌ Xatolik: ${(err as Error).message}`, channelsMenuKeyboard());
+      await this.safeEditMessageText(ctx, `❌ Xatolik: ${(err as Error).message}`, channelsMenuKeyboard());
     }
   }
 
@@ -594,7 +608,7 @@ export class BotUpdate {
     await ctx.answerCbQuery();
     ctx.session = { step: 'broadcast:message' };
     const total = await this.usersService.getTotalCount();
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       `📨 <b>Ommaviy xabar</b>\n\n👥 Jami foydalanuvchilar: ${total}\n\nYubormoqchi bo'lgan xabaringizni kiriting:\n<i>(HTML formatini ham ishlatishingiz mumkin)</i>`,
       { parse_mode: 'HTML', ...cancelKeyboard() },
     );
@@ -606,16 +620,16 @@ export class BotUpdate {
     const message = ctx.session.broadcastMessage;
 
     if (!message) {
-      await ctx.editMessageText('❌ Xabar topilmadi!');
+      await this.safeEditMessageText(ctx, '❌ Xabar topilmadi!');
       return;
     }
 
-    await ctx.editMessageText('⏳ Xabar yuborilmoqda, iltimos kuting...');
+    await this.safeEditMessageText(ctx, '⏳ Xabar yuborilmoqda, iltimos kuting...');
 
     ctx.session = {};
     const result = await this.botService.broadcast(message);
 
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       `📊 <b>Broadcast natijasi:</b>\n\n✅ Muvaffaqiyatli: ${result.success}\n❌ Xato: ${result.failed}`,
       { parse_mode: 'HTML', ...adminMainKeyboard() },
     );
@@ -649,7 +663,7 @@ export class BotUpdate {
       });
     }
 
-    await ctx.editMessageText(text, {
+    await this.safeEditMessageText(ctx, text, {
       parse_mode: 'HTML',
       ...adminMainKeyboard(),
     });
@@ -660,7 +674,7 @@ export class BotUpdate {
   async onAdminsMenu(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
     ctx.session = {};
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '👑 <b>Adminlar boshqaruvi</b>\n\nNimani qilmoqchisiz?',
       { parse_mode: 'HTML', ...adminsMenuKeyboard() },
     );
@@ -675,7 +689,7 @@ export class BotUpdate {
       return;
     }
     ctx.session = { step: 'admin:add:id' };
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '👤 Yangi admin Telegram ID kiriting:',
       cancelKeyboard(),
     );
@@ -705,7 +719,7 @@ export class BotUpdate {
       text += `\n📭 Qo'shilgan adminlar yo'q.`;
     }
 
-    await ctx.editMessageText(text, {
+    await this.safeEditMessageText(ctx, text, {
       parse_mode: 'HTML',
       ...adminsMenuKeyboard(),
     });
@@ -722,11 +736,11 @@ export class BotUpdate {
 
     const admins = await this.adminsService.getAll();
     if (admins.length === 0) {
-      await ctx.editMessageText('📭 O\'chirish uchun admin yo\'q.', adminsMenuKeyboard());
+      await this.safeEditMessageText(ctx, '📭 O\'chirish uchun admin yo\'q.', adminsMenuKeyboard());
       return;
     }
 
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🗑️ O\'chirmoqchi bo\'lgan adminni tanlang:',
       deleteAdminKeyboard(
         admins.map((a) => ({
@@ -744,12 +758,12 @@ export class BotUpdate {
 
     try {
       await this.adminsService.removeAdmin(telegramId);
-      await ctx.editMessageText(
+      await this.safeEditMessageText(ctx, 
         `✅ Admin <code>${telegramId}</code> o'chirildi!`,
         { parse_mode: 'HTML', ...adminsMenuKeyboard() },
       );
     } catch (err: any) {
-      await ctx.editMessageText(`❌ Xatolik: ${(err as Error).message}`, adminsMenuKeyboard());
+      await this.safeEditMessageText(ctx, `❌ Xatolik: ${(err as Error).message}`, adminsMenuKeyboard());
     }
   }
 
@@ -758,7 +772,7 @@ export class BotUpdate {
   async onCancel(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery('Bekor qilindi');
     ctx.session = {};
-    await ctx.editMessageText(
+    await this.safeEditMessageText(ctx, 
       '🎛️ <b>Admin Panel</b>\n\nAmal bekor qilindi.',
       { parse_mode: 'HTML', ...adminMainKeyboard() },
     );
@@ -767,6 +781,20 @@ export class BotUpdate {
   // =============================================
   // YORDAMCHI METODLAR
   // =============================================
+
+
+  // =============================================
+  // XAVFSIZ EDIT MESSAGE
+  // =============================================
+  private async safeEditMessageText(ctx: BotContext, text: string, extra?: any) {
+    try {
+      await ctx.editMessageText(text, extra);
+    } catch (e: any) {
+      if (!e.message?.includes('message is not modified')) {
+        this.logger.error('editMessageText xatosi:', e);
+      }
+    }
+  }
 
   private async saveMovie(ctx: BotContext, description: string | null) {
     const { code, name } = ctx.session.movieData;
@@ -859,47 +887,30 @@ export class BotUpdate {
       const chatInfo = await this.bot.telegram.getChat(input);
       const channelType = ctx.session.channelData?.type || ChannelType.PUBLIC;
 
-      let inviteLink: string | undefined;
+      if (!ctx.session.channelData) ctx.session.channelData = {};
+      ctx.session.channelData.channel_id = chatInfo.id.toString();
+      ctx.session.channelData.title = (chatInfo as any).title || input;
+      ctx.session.channelData.username = (chatInfo as any).username;
+      ctx.session.channelData.type = channelType;
 
-      // Maxfiy kanal uchun invite link olish
-      if (channelType === ChannelType.REQUEST) {
-        if (!ctx.session.channelData) ctx.session.channelData = {};
-        ctx.session.channelData.channel_id = chatInfo.id.toString();
-        ctx.session.channelData.title = (chatInfo as any).title || input;
-        ctx.session.channelData.username = (chatInfo as any).username;
-        ctx.session.channelData.type = channelType;
-        ctx.session.step = 'channel:add:link';
-        
-        await ctx.reply(
-          `✅ Kanal topildi: 📢 ${(chatInfo as any).title}\n\n🔗 Endi bot orqali kirish uchun shu kanalning zayavka (join request) ssilkasini yuboring:\n(Eslatma: ssilkani o'zingiz yaratib shu yerga tashlang)`,
-          cancelKeyboard(),
-        );
-        return; // Dasturni shu yerda to'xtatamiz, link kiritilishini kutamiz
-      }
+      let inviteLink: string | undefined;
 
       if (channelType === ChannelType.PRIVATE) {
         try {
           inviteLink = await this.bot.telegram.exportChatInviteLink(
             chatInfo.id,
           );
+          ctx.session.channelData.invite_link = inviteLink;
         } catch (err) {
           this.logger.error('Invite link olishda xato:', err);
-          inviteLink = undefined;
         }
       }
 
-      await this.channelsService.addChannel({
-        channel_id: chatInfo.id.toString(),
-        title: (chatInfo as any).title || input,
-        username: (chatInfo as any).username,
-        type: channelType,
-        invite_link: inviteLink,
-      });
-
-      ctx.session = {};
+      ctx.session.step = 'channel:add:title';
       await ctx.reply(
-        `✅ Kanal qo'shildi!\n\n📢 ${(chatInfo as any).title}\nTuri: ${channelType}`,
-        { ...channelsMenuKeyboard() },
+        `✅ Kanal topildi: 📢 <b>${(chatInfo as any).title}</b>\n\n` +
+        `📝 Tugma uchun nom kiriting (hozirgi nomi: <code>${(chatInfo as any).title}</code>):`,
+        { parse_mode: 'HTML', ...cancelKeyboard() },
       );
     } catch (err: any) {
       await ctx.reply(
@@ -909,7 +920,7 @@ export class BotUpdate {
     }
   }
 
-  private async finalizeChannelAdd(ctx: BotContext, link: string) {
+  private async finalizeChannelAdd(ctx: BotContext, link?: string) {
     try {
       const data = ctx.session.channelData;
       if (!data || !data.channel_id) {
@@ -923,18 +934,19 @@ export class BotUpdate {
         title: data.title || 'Kanal',
         username: data.username,
         type: data.type || ChannelType.REQUEST,
-        invite_link: link,
+        invite_link: link || data.invite_link,
       });
 
       ctx.session = {};
       await ctx.reply(
-        `✅ Zayavka kanali muvaffaqiyatli qo'shildi!\n\n📢 ${data.title}\n🔗 Ssilka: ${link}`,
+        `✅ Kanal muvaffaqiyatli qo'shildi!\n\n📢 ${data.title}\nTuri: ${data.type}`,
         { ...channelsMenuKeyboard() },
       );
     } catch (err: any) {
+      ctx.session = {};
       await ctx.reply(
         `❌ Kanal qo'shishda xato: ${(err as Error).message}`,
-        cancelKeyboard(),
+        { ...channelsMenuKeyboard() },
       );
     }
   }
