@@ -14,6 +14,9 @@ import { MoviesService } from '../modules/movies/movies.service';
 import { AdminsService } from '../modules/admins/admins.service';
 import { ChannelsService } from '../modules/channels/channels.service';
 import { ChannelType } from '../entities/channel.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { JoinRequestEntity } from '../entities/join-request.entity';
 import {
   adminMainKeyboard,
   moviesMenuKeyboard,
@@ -59,6 +62,8 @@ export class BotUpdate {
     private readonly moviesService: MoviesService,
     private readonly adminsService: AdminsService,
     private readonly channelsService: ChannelsService,
+    @InjectRepository(JoinRequestEntity)
+    private readonly joinRequestRepository: Repository<JoinRequestEntity>,
   ) {}
 
   // =============================================
@@ -177,6 +182,40 @@ export class BotUpdate {
       }
     } catch (err) {
       this.logger.error('my_chat_member handler xatosi:', err);
+    }
+  }
+
+  @On('chat_join_request')
+  async onChatJoinRequest(@Ctx() ctx: BotContext) {
+    try {
+      const update = (ctx.update as any).chat_join_request;
+      if (!update) return;
+
+      const chatId = update.chat.id.toString();
+      const userId = update.from.id;
+
+      // Zayavkani bazaga saqlash, lekin QABUL QILMASLIK
+      const exists = await this.joinRequestRepository.findOne({
+        where: { user_id: userId, channel_id: chatId },
+      });
+
+      if (!exists) {
+        await this.joinRequestRepository.save({
+          user_id: userId,
+          channel_id: chatId,
+        });
+      }
+
+      // Foydalanuvchini bazaga qo'shish/yangilash
+      await this.usersService.findOrCreate({
+        id: userId,
+        username: update.from.username,
+        first_name: update.from.first_name,
+        last_name: update.from.last_name,
+      });
+      
+    } catch (err) {
+      this.logger.error('chat_join_request handler xatosi:', err);
     }
   }
 
@@ -818,10 +857,18 @@ export class BotUpdate {
         channelType === ChannelType.REQUEST
       ) {
         try {
-          inviteLink = await this.bot.telegram.exportChatInviteLink(
-            chatInfo.id,
-          );
-        } catch {
+          if (channelType === ChannelType.REQUEST) {
+            const invite = await this.bot.telegram.createChatInviteLink(chatInfo.id, {
+              creates_join_request: true,
+            });
+            inviteLink = invite.invite_link;
+          } else {
+            inviteLink = await this.bot.telegram.exportChatInviteLink(
+              chatInfo.id,
+            );
+          }
+        } catch (err) {
+          this.logger.error('Invite link olishda xato:', err);
           inviteLink = undefined;
         }
       }

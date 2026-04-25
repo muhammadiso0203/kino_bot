@@ -11,6 +11,7 @@ import { UserEntity } from './entities/user.entity';
 import { MovieEntity } from './entities/movie.entity';
 import { AdminEntity } from './entities/admin.entity';
 import { ChannelEntity } from './entities/channel.entity';
+import { JoinRequestEntity } from './entities/join-request.entity';
 import { BotModule } from './bot/bot.module';
 
 @Module({
@@ -32,8 +33,8 @@ import { BotModule } from './bot/bot.module';
         username: config.get('DB_USERNAME', 'postgres'),
         password: config.get('DB_PASSWORD', 'postgres'),
         database: config.get('DB_NAME', 'kinodb'),
-        entities: [UserEntity, MovieEntity, AdminEntity, ChannelEntity],
-        synchronize: false, // Production da false qiling va migration ishlating
+        entities: [UserEntity, MovieEntity, AdminEntity, ChannelEntity, JoinRequestEntity],
+        synchronize: true, // Auto-create tables for development
         logging: false,
       }),
     }),

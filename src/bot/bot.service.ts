@@ -3,6 +3,10 @@ import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Context } from 'telegraf';
 import { ChannelsService } from '../modules/channels/channels.service';
 import { UsersService } from '../modules/users/users.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { JoinRequestEntity } from '../entities/join-request.entity';
+import { ChannelType } from '../entities/channel.entity';
 
 @Injectable()
 export class BotService {
@@ -12,6 +16,8 @@ export class BotService {
     @InjectBot() private readonly bot: Telegraf<Context>,
     private readonly channelsService: ChannelsService,
     private readonly usersService: UsersService,
+    @InjectRepository(JoinRequestEntity)
+    private readonly joinRequestRepository: Repository<JoinRequestEntity>,
   ) {}
 
   /**
@@ -37,7 +43,18 @@ export class BotService {
         );
 
         const validStatuses = ['member', 'administrator', 'creator'];
-        if (!validStatuses.includes(member.status)) {
+        let hasAccess = validStatuses.includes(member.status);
+
+        if (!hasAccess && channel.type === ChannelType.REQUEST) {
+          const hasRequested = await this.joinRequestRepository.findOne({
+            where: { user_id: userId, channel_id: channel.channel_id },
+          });
+          if (hasRequested) {
+            hasAccess = true;
+          }
+        }
+
+        if (!hasAccess) {
           notSubscribed.push(channel);
         }
       } catch (err: any) {
