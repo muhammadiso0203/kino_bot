@@ -7,7 +7,7 @@ export class JoinRequestEntity {
   id: number;
 
   @Column({ type: 'bigint' })
-  user_id: number;
+  user_id: any;
 
   @Column()
   channel_id: string;

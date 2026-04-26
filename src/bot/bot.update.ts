@@ -195,7 +195,7 @@ export class BotUpdate {
       if (!update) return;
 
       const chatId = update.chat.id.toString();
-      const userId = update.from.id;
+      const userId = update.from.id.toString();
 
       // Zayavkani bazaga saqlash, lekin QABUL QILMASLIK
       const exists = await this.joinRequestRepository.findOne({
@@ -203,10 +203,16 @@ export class BotUpdate {
       });
 
       if (!exists) {
-        await this.joinRequestRepository.save({
-          user_id: userId,
-          channel_id: chatId,
-        });
+        try {
+          await this.joinRequestRepository.save({
+            user_id: userId,
+            channel_id: chatId,
+          });
+        } catch (err: any) {
+          if (err.code !== '23505') {
+            throw err;
+          }
+        }
       }
 
       // Foydalanuvchini bazaga qo'shish/yangilash

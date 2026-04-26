@@ -47,7 +47,7 @@ export class BotService {
 
         if (!hasAccess && channel.type === ChannelType.REQUEST) {
           const hasRequested = await this.joinRequestRepository.findOne({
-            where: { user_id: userId, channel_id: channel.channel_id },
+            where: { user_id: userId.toString(), channel_id: channel.channel_id },
           });
           if (hasRequested) {
             hasAccess = true;
@@ -65,7 +65,7 @@ export class BotService {
         // foydalanuvchini a'zo emas deb hisoblaymiz.
         if (channel.type === ChannelType.REQUEST) {
           const hasRequested = await this.joinRequestRepository.findOne({
-            where: { user_id: userId, channel_id: channel.channel_id },
+            where: { user_id: userId.toString(), channel_id: channel.channel_id },
           });
           if (hasRequested) {
             continue; // Zayavka yuborgan bo'lsa ruxsat beramiz
