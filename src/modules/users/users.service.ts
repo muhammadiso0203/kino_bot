@@ -65,6 +65,15 @@ export class UsersService {
       .getCount();
   }
 
+  async getTodayCount(): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return this.userRepo
+      .createQueryBuilder('user')
+      .where('user.created_at >= :date', { date: today })
+      .getCount();
+  }
+
   async getBlockedCount(): Promise<number> {
     return this.userRepo.count({ where: { is_blocked: true } });
   }

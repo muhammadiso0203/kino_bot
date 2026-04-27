@@ -646,9 +646,10 @@ export class BotUpdate {
   async onStats(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
 
-    const [totalUsers, totalMovies, activeUsers, blockedUsers, topMovies] =
+    const [totalUsers, todayUsers, totalMovies, activeUsers, blockedUsers, topMovies] =
       await Promise.all([
         this.usersService.getTotalCount(),
+        this.usersService.getTodayCount(),
         this.moviesService.getTotalCount(),
         this.usersService.getActiveCount(),
         this.usersService.getBlockedCount(),
@@ -658,6 +659,7 @@ export class BotUpdate {
     let text =
       `📊 <b>Statistika</b>\n\n` +
       `👥 Jami foydalanuvchilar: <b>${totalUsers}</b>\n` +
+      `✨ Bugun qo'shilganlar: <b>${todayUsers}</b>\n` +
       `🔥 7 kun ichida faol foydalanuvchilar: <b>${activeUsers}</b>\n` +
       `🚫 Botni bloklaganlar: <b>${blockedUsers}</b>\n` +
       `🎬 Jami kinolar: <b>${totalMovies}</b>\n\n`;
