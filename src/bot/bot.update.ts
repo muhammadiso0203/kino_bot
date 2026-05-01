@@ -27,6 +27,7 @@ import {
   deleteAdminKeyboard,
   cancelKeyboard,
   subscribeCheckKeyboard,
+  moviePaginationKeyboard,
 } from './keyboards/admin.keyboard';
 
 
@@ -490,24 +491,30 @@ export class BotUpdate {
     );
   }
 
-  @Action('movie:list')
+  @Action(/^movie:list:(\d+)$/)
   async onMovieList(@Ctx() ctx: BotContext) {
     await ctx.answerCbQuery();
-    const [movies, total] = await this.moviesService.getAll(1, 20);
+    const match = (ctx as any).match;
+    const page = parseInt(match[1], 10) || 1;
+    const limit = 10;
+    const [movies, total] = await this.moviesService.getAll(page, limit);
 
-    if (movies.length === 0) {
+    if (movies.length === 0 && page === 1) {
       await this.safeEditMessageText(ctx, '📭 Kinolar bazasi bo\'sh.', moviesMenuKeyboard());
       return;
     }
 
-    let text = `🎬 <b>Kinolar ro'yxati</b> (jami: ${total})\n\n`;
+    const totalPages = Math.ceil(total / limit);
+    let text = `🎬 <b>Kinolar ro'yxati</b> (Jami: ${total}, Sahifa: ${page}/${totalPages})\n\n`;
+    
     movies.forEach((m, i) => {
-      text += `${i + 1}. <code>${m.code}</code> — : ${m.name} (📥 Yuklanishlar soni: ${m.view_count})\n`;
+      const index = (page - 1) * limit + i + 1;
+      text += `${index}. <code>${m.code}</code> — : ${m.name} (📥 ${m.view_count})\n`;
     });
 
     await this.safeEditMessageText(ctx, text, {
       parse_mode: 'HTML',
-      ...moviesMenuKeyboard(),
+      ...moviePaginationKeyboard(page, totalPages),
     });
   }
 

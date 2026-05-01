@@ -23,9 +23,33 @@ export const moviesMenuKeyboard = () =>
   Markup.inlineKeyboard([
     [Markup.button.callback('➕ Kino qo\'shish', 'movie:add')],
     [Markup.button.callback('🗑️ Kino o\'chirish', 'movie:delete')],
-    [Markup.button.callback('📋 Barcha kinolar', 'movie:list')],
+    [Markup.button.callback('📋 Barcha kinolar', 'movie:list:1')],
     [Markup.button.callback('◀️ Orqaga', 'admin:back')],
   ]);
+
+/**
+ * Kinolar uchun pagination klaviaturasi
+ */
+export const moviePaginationKeyboard = (page: number, totalPages: number) => {
+  const buttons = [];
+  const row = [];
+
+  if (page > 1) {
+    row.push(Markup.button.callback('⬅️ Oldingi', `movie:list:${page - 1}`));
+  }
+
+  if (page < totalPages) {
+    row.push(Markup.button.callback('Keyingi ➡️', `movie:list:${page + 1}`));
+  }
+
+  if (row.length > 0) {
+    buttons.push(row);
+  }
+
+  buttons.push([Markup.button.callback('◀️ Orqaga', 'admin:movies')]);
+
+  return Markup.inlineKeyboard(buttons);
+};
 
 /**
  * Kanallar menyusi
