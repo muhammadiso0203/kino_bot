@@ -138,7 +138,9 @@ export const subscribeCheckKeyboard = (
 ) => {
   const urlButtons = channels.map((ch) => {
     const url = ch.type === ChannelType.BOT
-      ? `https://t.me/${ch.username?.replace('@', '')}?start=start`
+      ? ch.invite_link
+        ? ch.invite_link
+        : `https://t.me/${ch.username?.replace('@', '')}?start=start`
       : ch.invite_link
       ? ch.invite_link
       : ch.username

@@ -34,13 +34,15 @@ export class BotService {
     }
 
     const notSubscribed = [];
+    const sponsorBots = [];
 
     for (const channel of channels) {
-      try {
-        if (channel.type === ChannelType.BOT) {
-          continue;
-        }
+      if (channel.type === ChannelType.BOT) {
+        sponsorBots.push(channel);
+        continue;
+      }
 
+      try {
         const member = await this.bot.telegram.getChatMember(
           channel.channel_id,
           userId,
@@ -79,8 +81,16 @@ export class BotService {
       }
     }
 
+    const isSubscribed = notSubscribed.length === 0;
+
+    // Agar foydalanuvchi qaysidir majburiy kanalga a'zo bo'lmagan bo'lsa,
+    // homiy botlarni ham ro'yxatga qo'shamiz (ular klaviaturada ko'rinishi uchun)
+    if (!isSubscribed) {
+      notSubscribed.push(...sponsorBots);
+    }
+
     return {
-      isSubscribed: notSubscribed.length === 0,
+      isSubscribed,
       notSubscribed,
     };
   }

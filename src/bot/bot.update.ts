@@ -936,7 +936,21 @@ export class BotUpdate {
       }
 
       // Kanal ma'lumotlarini tekshirish
-      const chatInfo = await this.bot.telegram.getChat(targetInput);
+      let chatInfo: any;
+      if (channelType === ChannelType.BOT) {
+        // Botlarni getChat orqali tekshirish imkonsiz, shuning uchun mock qilamiz
+        chatInfo = {
+          id: targetInput,
+          first_name: targetInput,
+          username: targetInput,
+        };
+      } else {
+        // Ommaviy kanallar uchun username bo'lsa va @ bilan boshlanmasa, @ qo'shamiz
+        if (!targetInput.startsWith('-') && !targetInput.startsWith('@')) {
+          targetInput = `@${targetInput}`;
+        }
+        chatInfo = await this.bot.telegram.getChat(targetInput);
+      }
 
       if (!ctx.session.channelData) ctx.session.channelData = {};
       ctx.session.channelData.channel_id = chatInfo.id.toString();
