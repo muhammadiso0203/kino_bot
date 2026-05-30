@@ -1,4 +1,5 @@
 import { Markup } from 'telegraf';
+import { ChannelType } from '../../entities/channel.entity';
 
 /**
  * Admin bosh menyu klaviaturasi
@@ -82,7 +83,10 @@ export const channelTypeKeyboard = () =>
       Markup.button.callback('🌐 Ommaviy', 'channel_type:public'),
       Markup.button.callback('🔒 Maxfiy', 'channel_type:private'),
     ],
-    [Markup.button.callback('📬 So\'rovli', 'channel_type:request')],
+    [
+      Markup.button.callback('📬 So\'rovli', 'channel_type:request'),
+      Markup.button.callback('🤖 Bot', 'channel_type:bot'),
+    ],
     [Markup.button.callback('❌ Bekor qilish', 'cancel')],
   ]);
 
@@ -130,15 +134,19 @@ export const cancelKeyboard = () =>
  * Obuna tekshirish tugmasi
  */
 export const subscribeCheckKeyboard = (
-  channels: { title: string; username?: string; invite_link?: string }[],
+  channels: { title: string; username?: string; invite_link?: string; type?: ChannelType }[],
 ) => {
   const urlButtons = channels.map((ch) => {
-    const url = ch.invite_link
+    const url = ch.type === ChannelType.BOT
+      ? `https://t.me/${ch.username?.replace('@', '')}?start=start`
+      : ch.invite_link
       ? ch.invite_link
       : ch.username
       ? `https://t.me/${ch.username.replace('@', '')}`
       : 'https://t.me';
-    return [{ text: `📢 ${ch.title}`, url, style: 'danger' } as any];
+    
+    const text = ch.type === ChannelType.BOT ? `🤖 ${ch.title}` : `📢 ${ch.title}`;
+    return [{ text, url, style: 'danger' } as any];
   });
 
   return Markup.inlineKeyboard([

@@ -37,6 +37,10 @@ export class BotService {
 
     for (const channel of channels) {
       try {
+        if (channel.type === ChannelType.BOT) {
+          continue;
+        }
+
         const member = await this.bot.telegram.getChatMember(
           channel.channel_id,
           userId,

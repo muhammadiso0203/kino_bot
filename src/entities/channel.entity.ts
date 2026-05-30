@@ -9,6 +9,7 @@ export enum ChannelType {
   PUBLIC = 'public',
   PRIVATE = 'private',
   REQUEST = 'request',
+  BOT = 'bot',
 }
 
 @Entity('channels')

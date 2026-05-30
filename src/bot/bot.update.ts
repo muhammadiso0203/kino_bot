@@ -545,12 +545,20 @@ export class BotUpdate {
     const type = ((ctx as any).match as RegExpExecArray)[1] as ChannelType;
     ctx.session.channelData = { type };
     ctx.session.step = 'channel:add:id';
-    await this.safeEditMessageText(ctx, 
-      '🔗 Kanal ID yoki username kiriting:\n\n' +
-        '• Ommaviy kanal: @username yoki -100xxxx\n' +
-        '• Maxfiy/So\'rovli kanal: -100xxxx (ID)',
-      cancelKeyboard(),
-    );
+    if (type === ChannelType.BOT) {
+      await this.safeEditMessageText(ctx, 
+        '🔗 Bot taklif havolasini (referal ssilkasini) kiriting:\n\n' +
+          '• Masalan: https://t.me/username_bot?start=ref_code',
+        cancelKeyboard(),
+      );
+    } else {
+      await this.safeEditMessageText(ctx, 
+        '🔗 Kanal ID yoki username kiriting:\n\n' +
+          '• Ommaviy kanal: @username yoki -100xxxx\n' +
+          '• Maxfiy/So\'rovli kanal: -100xxxx (ID)',
+        cancelKeyboard(),
+      );
+    }
   }
 
   @Action('channel:list')
@@ -570,7 +578,11 @@ export class BotUpdate {
           ? '🌐'
           : ch.type === ChannelType.PRIVATE
           ? '🔒'
-          : '📬';
+          : ch.type === ChannelType.REQUEST
+          ? '📬'
+          : ch.type === ChannelType.BOT
+          ? '🤖'
+          : '📢';
       text += `${i + 1}. ${typeLabel} ${ch.title}`;
       if (ch.username) text += ` (@${ch.username})`;
       text += `\n   ID: ${ch.channel_id}\n\n`;
@@ -898,17 +910,42 @@ export class BotUpdate {
 
   private async handleChannelIdInput(ctx: BotContext, input: string) {
     try {
-      // Kanal ma'lumotlarini tekshirish
-      const chatInfo = await this.bot.telegram.getChat(input);
       const channelType = ctx.session.channelData?.type || ChannelType.PUBLIC;
+      let targetInput = input.trim();
+      let inviteLink: string | undefined;
+
+      if (channelType === ChannelType.BOT) {
+        // Havoladan bot username'ini ajratib olish
+        const regex = /(?:t\.me|telegram\.me)\/([a-zA-Z0-9_]{5,32})/i;
+        const match = targetInput.match(regex);
+        let username = '';
+        if (match) {
+          username = match[1];
+          inviteLink = targetInput;
+        } else if (targetInput.startsWith('@')) {
+          username = targetInput.replace('@', '');
+          inviteLink = `https://t.me/${username}`;
+        } else if (/^[a-zA-Z0-9_]{5,32}$/.test(targetInput)) {
+          username = targetInput;
+          inviteLink = `https://t.me/${username}`;
+        } else {
+          await ctx.reply('❌ Noto\'g\'ri bot havolasi yoki username. Iltimos bot taklif havolasini yuboring:\n(Masalan: https://t.me/username_bot?start=ref_code)', cancelKeyboard());
+          return;
+        }
+        targetInput = username;
+      }
+
+      // Kanal ma'lumotlarini tekshirish
+      const chatInfo = await this.bot.telegram.getChat(targetInput);
 
       if (!ctx.session.channelData) ctx.session.channelData = {};
       ctx.session.channelData.channel_id = chatInfo.id.toString();
-      ctx.session.channelData.title = (chatInfo as any).title || input;
+      ctx.session.channelData.title = (chatInfo as any).title || (chatInfo as any).first_name || targetInput;
       ctx.session.channelData.username = (chatInfo as any).username;
       ctx.session.channelData.type = channelType;
-
-      let inviteLink: string | undefined;
+      if (inviteLink) {
+        ctx.session.channelData.invite_link = inviteLink;
+      }
 
       if (channelType === ChannelType.PRIVATE) {
         try {
@@ -921,15 +958,24 @@ export class BotUpdate {
         }
       }
 
+      const isBot = channelType === ChannelType.BOT;
+      const typeLabel = isBot ? '🤖' : '📢';
+      const nameLabel = isBot ? 'Bot' : 'Kanal';
+      const displayName = (chatInfo as any).title || (chatInfo as any).first_name || targetInput;
+
       ctx.session.step = 'channel:add:title';
       await ctx.reply(
-        `✅ Kanal topildi: 📢 <b>${(chatInfo as any).title}</b>\n\n` +
-        `📝 Tugma uchun nom kiriting (hozirgi nomi: <code>${(chatInfo as any).title}</code>):`,
+        `✅ ${nameLabel} topildi: ${typeLabel} <b>${displayName}</b>\n\n` +
+        `📝 Tugma uchun nom kiriting (hozirgi nomi: <code>${displayName}</code>):`,
         { parse_mode: 'HTML', ...cancelKeyboard() },
       );
     } catch (err: any) {
+      const isBot = ctx.session.channelData?.type === ChannelType.BOT;
+      const errorMsg = isBot 
+        ? '❌ Bot topilmadi! Iltimos, havola to\'g\'riligini tekshiring.'
+        : '❌ Kanal topilmadi yoki bot kanal adminsi emas!';
       await ctx.reply(
-        `❌ Kanal topilmadi yoki bot kanal adminsi emas!\n\nXato: ${(err as Error).message}\n\nQaytadan kiriting:`,
+        `${errorMsg}\n\nXato: ${(err as Error).message}\n\nQaytadan kiriting:`,
         cancelKeyboard(),
       );
     }
